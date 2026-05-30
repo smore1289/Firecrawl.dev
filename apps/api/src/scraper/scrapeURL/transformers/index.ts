@@ -11,6 +11,7 @@ import {
   performCleanContent,
 } from "./llmExtract";
 import { performQuery } from "./query";
+import { performKnowledgeGraph } from "./knowledgeGraph";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
@@ -85,6 +86,7 @@ async function deriveMarkdownFromHTML(
   // - json format requires markdown (for LLM extraction)
   // - summary format requires markdown (for summarization)
   // - question/highlights/query formats require markdown (for page-level answers)
+  // - knowledgeGraph format requires markdown (for entity/relationship extraction)
   const hasMarkdown = hasFormatOfType(meta.options.formats, "markdown");
   const hasChangeTracking = hasFormatOfType(
     meta.options.formats,
@@ -95,6 +97,10 @@ async function deriveMarkdownFromHTML(
   const hasQuestion = hasFormatOfType(meta.options.formats, "question");
   const hasHighlights = hasFormatOfType(meta.options.formats, "highlights");
   const hasQuery = hasFormatOfType(meta.options.formats, "query");
+  const hasKnowledgeGraph = hasFormatOfType(
+    meta.options.formats,
+    "knowledgeGraph",
+  );
   if (
     !hasMarkdown &&
     !hasChangeTracking &&
@@ -103,6 +109,7 @@ async function deriveMarkdownFromHTML(
     !hasQuestion &&
     !hasHighlights &&
     !hasQuery &&
+    !hasKnowledgeGraph &&
     !meta.options.onlyCleanContent
   ) {
     return document;
@@ -329,6 +336,10 @@ function coerceFieldsToFormats(meta: Meta, document: Document): Document {
   );
   const hasLegacyQueryFormat = hasFormatOfType(meta.options.formats, "query");
   const hasAnswerFormat = hasQuestionFormat || hasLegacyQueryFormat;
+  const hasKnowledgeGraph = hasFormatOfType(
+    meta.options.formats,
+    "knowledgeGraph",
+  );
 
   if (!hasMarkdown && document.markdown !== undefined) {
     delete document.markdown;
@@ -465,6 +476,17 @@ function coerceFieldsToFormats(meta: Meta, document: Document): Document {
     );
   }
 
+  if (!hasKnowledgeGraph && document.knowledgeGraph !== undefined) {
+    meta.logger.warn(
+      "Removed knowledgeGraph from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
+    );
+    delete document.knowledgeGraph;
+  } else if (hasKnowledgeGraph && document.knowledgeGraph === undefined) {
+    meta.logger.warn(
+      "Request had format knowledgeGraph, but there was no knowledgeGraph field in the result.",
+    );
+  }
+
   if (!hasBranding && document.branding !== undefined) {
     meta.logger.warn(
       "Removed branding from Document because it wasn't in formats -- this indicates the engine returned unexpected data.",
@@ -563,6 +585,7 @@ const transformerStack: Transformer[] = [
   performLLMExtract,
   performSummary,
   performQuery,
+  performKnowledgeGraph,
   performAttributes,
   performAgent,
   removeBase64Images,
