@@ -1854,6 +1854,7 @@ export const searchRequestSchema = z
                 questionFormatWithOptions,
                 highlightsFormatWithOptions,
                 queryFormatWithOptions,
+                knowledgeGraphFormatWithOptions,
                 screenshotFormatWithOptions,
               ])
               .array()
